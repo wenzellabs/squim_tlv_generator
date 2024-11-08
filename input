@@ -1,0 +1,74 @@
+time
+    type 0x01
+    u64 us_since_1900
+
+noteOn
+    type 0x11
+    u64 us_since_1900
+    u8 note
+    u8 channel
+    u8 velocity
+noteOff
+    type 0x12
+    u64 us_since_1900
+    u8 note
+    u8 channel
+    u8 velocity
+
+noteOnOff
+    type 0x13
+    u64 on
+    u64 off
+    u8 note
+    u8 channel
+    u8 velocity
+
+panic
+    type 0x1f
+
+beat # FIXME unused
+    type 0x20
+    u8 bpm
+    u32 count
+
+start
+    type 0x21
+    u64 us_since_1900
+    u8 bpm
+    u32 count
+
+keyNotes # FIXME unused, think was from b4 array u8 note 16
+    type 0x30
+    u8 root
+    u8 third
+    u8 fifth
+    u8 seventh
+    u8 ninth
+    u8 eleventh
+    u8 thirteenth
+
+chord
+    type 0x31
+    u64 on      # us_since_1900 timestamp when to start the chord
+    u64 off     # us_since_1900 timestamp when to stop the chord
+    array u8 note 16
+
+scale
+    type 0x32
+    u8 root
+    enum scale_type major minor harmonic_minor melodic_minor dorian phrygian lydian mixolydian locrian major_pentatonic minor_pentatonic blues_minor blues_major whole_tone chromatic
+
+artist # long packet
+    type 0x23
+    array i8 artist 234
+
+title # long packet
+    type 0x24
+    array i8 title 234
+
+ledColor
+    type 0x40
+    u8 led # index
+    u8 r
+    u8 g
+    u8 b
