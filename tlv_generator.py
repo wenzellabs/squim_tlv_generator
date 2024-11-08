@@ -57,7 +57,6 @@ class TLV_generator:
         self.print_py('import struct\n')
         self.print_py('from enum import Enum\n')
         self.print_py('\n')
-        self.print_py(f'MAESTRO_PORT = {self.config.udp_port} # UDP port\n')
         self.print_py('\n')
         self.print_py_indented(0, '# base TLV Packet class\n')
         self.print_py_indented(0, 'class TLVPacket:\n')

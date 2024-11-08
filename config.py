@@ -11,7 +11,6 @@ class Interface(object, metaclass=MetaInterface):
         raise TypeError
 
 class Config(Interface):
-    udp_port = 11000
     indent_py = "    "
     indent_c = "    "
     input = "input"
