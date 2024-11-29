@@ -60,6 +60,8 @@ class TLV_generator:
         self.print_py('\n')
         self.print_py_indented(0, '# base TLV Packet class\n')
         self.print_py_indented(0, 'class TLVPacket:\n')
+        self.print_py_indented(1, 'type_class_map = {}\n')
+        self.print_py('\n')
         self.print_py_indented(1, 'def __init__(self, type, payload):\n')
         self.print_py_indented(2, 'self.type = type\n')
         self.print_py_indented(2, 'self.len = 2 + len(payload)  # header length is 2 bytes\n')
@@ -73,7 +75,15 @@ class TLV_generator:
         self.print_py_indented(1, 'def from_bytes(data):\n')
         self.print_py_indented(2, 'type, length = struct.unpack(\'<BB\', data[:2])\n')
         self.print_py_indented(2, 'payload = data[2:length]\n')
-        self.print_py_indented(2, 'return TLVPacket(type, payload)\n')
+        self.print_py_indented(2, 'packet_class = TLVPacket.type_class_map.get(type, TLVPacket)\n')
+        self.print_py_indented(2, 'return packet_class.from_bytes(data)\n')
+        self.print_py('\n')
+        self.print_py_indented(1, '@classmethod\n')
+        self.print_py_indented(1, 'def register_type(cls, tlv_nonce):\n')
+        self.print_py_indented(2, 'def wrapper(subclass):\n')
+        self.print_py_indented(3, 'cls.type_class_map[tlv_nonce] = subclass\n')
+        self.print_py_indented(3, 'return subclass\n')
+        self.print_py_indented(2, 'return wrapper\n')
         self.print_py('\n')
         self.print_py('\n')
         self.print_py('# derived classes for specific TLV types\n')
@@ -81,6 +91,7 @@ class TLV_generator:
 
     def emit_py_nodes(self):
         for n in self.node_list:
+            self.print_py_indented(0, f'@TLVPacket.register_type({n.node_nonce})\n')
             self.print_py_indented(0, f'class TLVPacket{self.capitalize(n.name)}(TLVPacket):\n')
 
             # enums
