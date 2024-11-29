@@ -113,6 +113,12 @@ class TLV_generator:
 
             self.print_py_indented(2, f'tlv_nonce = {n.node_nonce}\n')
 
+            for i in range(len(n.param_list)):
+                if n.datatype[i] == 'array':
+                    self.print_py_indented(2, f'self.{n.extra_args[i][0]} = {n.extra_args[i][0]}\n')
+                else:
+                    self.print_py_indented(2, f'self.{n.param_list[i]} = {n.param_list[i]}\n')
+
             for e in enums:
                 self.print_py_indented(2, f'{n.param_list[e]}_mapped = self.{n.param_list[e]}_map.get({n.param_list[e]})\n')
                 self.print_py_indented(2, f'if {n.param_list[e]}_mapped is None:\n')
