@@ -36,7 +36,7 @@ class TLV_generator:
             'i32': 'i',
             'u64': 'Q',
             'i64': 'q',
-            'enum': 'B' # FIXME micropython has no enum
+            'enum': 'B'
         }
         self.tag_c_map ={
             'u8': 'uint8_t',
@@ -47,7 +47,7 @@ class TLV_generator:
             'i32': 'int32_t',
             'u64': 'uint64_t',
             'i64': 'int64_t',
-            'enum': 'replaced by tlv_enum_XXX_t' # FIXME micropython has no enum
+            'enum': 'replaced by tlv_enum_XXX_t'
         }
 
     def emit_py_header(self):
@@ -55,7 +55,6 @@ class TLV_generator:
         self.print_py('# tlv_generator.py - do not edit\n')
         self.print_py('\n')
         self.print_py('import struct\n')
-        self.print_py('from enum import Enum\n') # FIXME micropython has no enum
         self.print_py('\n')
         self.print_py('\n')
         self.print_py_indented(0, '# base TLV Packet class\n')
@@ -94,10 +93,15 @@ class TLV_generator:
             self.print_py_indented(0, f'@TLVPacket.register_type({n.node_nonce})\n')
             self.print_py_indented(0, f'class TLVPacket{self.capitalize(n.name)}(TLVPacket):\n')
 
-            # enums
-            enums = [e for e, x in enumerate(n.datatype) if x == 'enum'] # FIXME micropython has no enum
+            # enums - we're not using python Enum here since micropython doesn't support it
+            enums = [e for e, x in enumerate(n.datatype) if x == 'enum']
             for e in enums:
-                self.print_py_indented(1, f'Enum_{n.param_list[e]} = Enum(\'Enum_{n.param_list[e]}\', {n.extra_args[e]})\n')
+                self.print_py_indented(1, f'{n.param_list[e]}_map = {{\n')
+                count = 1 # parrot real Enums and start with 1
+                for k in n.extra_args[e]:
+                    self.print_py_indented(2, f'\'{k}\': {count},\n')
+                    count += 1
+                self.print_py_indented(1, f'}}\n')
 
             self.print_py_indented(1, f'def __init__(self')
             for i in range(len(n.param_list)):
@@ -109,13 +113,19 @@ class TLV_generator:
 
             self.print_py_indented(2, f'tlv_nonce = {n.node_nonce}\n')
 
+            for e in enums:
+                self.print_py_indented(2, f'{n.param_list[e]}_mapped = self.{n.param_list[e]}_map.get({n.param_list[e]})\n')
+                self.print_py_indented(2, f'if {n.param_list[e]}_mapped is None:\n')
+                self.print_py_indented(3, f'# FIXME print is not the smartes move, but raise would be worse\n')
+                self.print_py_indented(3, f'print(f\' invalid enum {{{n.param_list[e]}}}\')\n')
+
             if len(n.param_list) > 0:
                 self.print_py_indented(2, f'payload = struct.pack(\'<{n.str_pack_unpack}\'')
                 for i in range(len(n.param_list)):
-                    if n.datatype[i] == 'enum': # FIXME micropython has no enum
-                        self.print_py(f', {n.param_list[i]}.value')
-                    elif n.datatype[i] == 'array':
+                    if n.datatype[i] == 'array':
                         self.print_py(f', *{n.extra_args[i][0]}')
+                    elif n.datatype[i] == 'enum':
+                        self.print_py(f', {n.param_list[i]}_mapped')
                     else:
                         self.print_py(f', {n.param_list[i]}')
                 self.print_py_indented(0, f')\n')
@@ -131,13 +141,28 @@ class TLV_generator:
                 for i in range(len(n.param_list)):
                     if n.datatype[i] == 'array':
                         self.print_py(f'*{n.extra_args[i][0]}, ')
+                    elif n.datatype[i] == 'enum':
+                        self.print_py(f'*{n.param_list[i]}_id, ')
                     else:
                         self.print_py(f'{n.param_list[i]}, ')
-                self.print_py_indented(0, f'= struct.unpack(\'<{n.str_pack_unpack}\', data[2:])\n')
+                self.print_py(f'= struct.unpack(\'<{n.str_pack_unpack}\', data[2:])\n')
+
+            for e in enums:
+                self.print_py_indented(2, f'# reverse lookup for {n.param_list[e]}_name\n')
+                self.print_py_indented(2, f'{n.param_list[e]}_name = next(\n')
+                self.print_py_indented(3, f'(name for name, value in TLVPacket{self.capitalize(n.name)}.{n.param_list[e]}_map.items() if value == {n.param_list[e]}_id),\n')
+                self.print_py_indented(3, f'None\n')
+                self.print_py_indented(2, f')\n')
+                self.print_py_indented(2, f'if {n.param_list[e]}_name is None:\n')
+                self.print_py_indented(3, f'# FIXME print is not the smartes move, but raise would be worse\n')
+                self.print_py_indented(3, f'print(f\'unknown {n.param_list[e]}_id {{{n.param_list[e]}_id}}\')\n')
+
             self.print_py_indented(2, f'return TLVPacket{self.capitalize(n.name)}(')
             for i in range(len(n.param_list)):
                 if n.datatype[i] == 'array':
                     self.print_py(f'{n.extra_args[i][0]}, ')
+                elif n.datatype[i] == 'enum':
+                    self.print_py(f'{n.param_list[i]}_name, ')
                 else:
                     self.print_py(f'{n.param_list[i]}, ')
             self.print_py_indented(0, f')\n')
@@ -169,7 +194,7 @@ class TLV_generator:
             self.print_c(f'#define TLV_TYPE_{self.camel_to_snake(n.name).upper()} {n.node_nonce}\n')
 
             # enums
-            enums = [e for e, x in enumerate(n.datatype) if x == 'enum'] # FIXME micropython has no enum
+            enums = [e for e, x in enumerate(n.datatype) if x == 'enum']
             for e in enums:
                 self.print_c_indented(0, f'typedef enum\n')
                 self.print_c_indented(0, f'{{\n')
@@ -182,7 +207,7 @@ class TLV_generator:
             self.print_c(f'typedef struct tlv_type_{self.camel_to_snake(n.name)}_s\n')
             self.print_c('{\n')
             for p in range(len(n.param_list)):
-                if n.datatype[p] == 'enum': # FIXME micropython has no enum
+                if n.datatype[p] == 'enum':
                     self.print_c_indented(1, f'tlv_enum_{self.camel_to_snake(n.param_list[p])}_t {n.param_list[p]};\n')
                 elif n.datatype[p] == 'array':
                     self.print_c_indented(1, f'{self.tag_c_map.get(n.param_list[p])} {n.extra_args[p][0]}[{n.extra_args[p][1]}];\n')
