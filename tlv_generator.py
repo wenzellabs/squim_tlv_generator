@@ -148,17 +148,18 @@ class TLV_generator:
                     if n.datatype[i] == 'array':
                         self.print_py(f'*{n.extra_args[i][0]}, ')
                     elif n.datatype[i] == 'enum':
-                        self.print_py(f'*{n.param_list[i]}_id, ')
+                        self.print_py(f'{n.param_list[i]}_id, ')
                     else:
                         self.print_py(f'{n.param_list[i]}, ')
                 self.print_py(f'= struct.unpack(\'<{n.str_pack_unpack}\', data[2:])\n')
 
             for e in enums:
                 self.print_py_indented(2, f'# reverse lookup for {n.param_list[e]}_name\n')
-                self.print_py_indented(2, f'{n.param_list[e]}_name = next(\n')
-                self.print_py_indented(3, f'(name for name, value in TLVPacket{self.capitalize(n.name)}.{n.param_list[e]}_map.items() if value == {n.param_list[e]}_id),\n')
-                self.print_py_indented(3, f'None\n')
-                self.print_py_indented(2, f')\n')
+                self.print_py_indented(2, f'{n.param_list[e]}_name = None\n')
+                self.print_py_indented(2, f'for name, value in TLVPacket{self.capitalize(n.name)}.{n.param_list[e]}_map.items():\n')
+                self.print_py_indented(3, f'if value == {n.param_list[e]}_id:\n')
+                self.print_py_indented(4, f'{n.param_list[e]}_name = name\n')
+                self.print_py_indented(4, f'break\n')
                 self.print_py_indented(2, f'if {n.param_list[e]}_name is None:\n')
                 self.print_py_indented(3, f'# FIXME print is not the smartes move, but raise would be worse\n')
                 self.print_py_indented(3, f'print(f\'unknown {n.param_list[e]}_id {{{n.param_list[e]}_id}}\')\n')
